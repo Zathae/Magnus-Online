@@ -1061,7 +1061,12 @@ void ActionListener::OnHit(const RawMessageData& rawMsgData,
   }
 
   // TODO: repair IsDistanceValid instead
-  if (!IsBowOrCrossbowShot(hitData, &partOne.worldState)) {
+  // Magnus Online: check distance for player-vs-player hits only. Pre-placed NPCs run their AI in players'
+  // games and the server's copy of their position never updates, so PvE hits more than one cell from where
+  // the NPC was placed were wrongly rejected both ways. IsDistanceValid above already skips PvE the same way.
+  const bool isPlayerVsPlayer =
+    aggressor->GetBaseId() <= 0x7 && targetRef->GetBaseId() <= 0x7;
+  if (isPlayerVsPlayer && !IsBowOrCrossbowShot(hitData, &partOne.worldState)) {
     const NiPoint3& aggressorPos = aggressor->GetPos();
     const NiPoint3& targetPos = targetRef->GetPos();
     constexpr float kExteriorCellWidthUnits = 4096.f;
