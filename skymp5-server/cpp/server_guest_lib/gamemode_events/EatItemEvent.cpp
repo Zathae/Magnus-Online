@@ -35,6 +35,12 @@ void EatItemEvent::OnFireSuccess(WorldState* worldState)
   std::vector<espm::Effects::Effect> effects;
   if (isAlchemyItem) {
     effects = espm::GetData<espm::ALCH>(baseId, worldState).effects;
+    // Magnus Online: effect ids inside a record are local to its plugin file
+    espm::LookupResult alchemyLookup =
+      worldState->GetEspm().GetBrowser().LookupById(baseId);
+    for (auto& effect : effects) {
+      effect.effectId = alchemyLookup.ToGlobalId(effect.effectId);
+    }
   } else if (isIngredient) {
     // effects = espm::GetData<espm::INGR>(baseId, worldState).effects;
   } else {

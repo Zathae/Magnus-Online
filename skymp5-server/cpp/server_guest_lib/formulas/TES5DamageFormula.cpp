@@ -93,9 +93,19 @@ float TES5DamageFormulaImpl::CalcArmorRatingComponent(
     auto ac = static_cast<float>(armorData.baseRatingX100) / 100;
     if (armorData.enchantmentFormId) {
       // TODO(#632) refactor this effect with actor effect system
+      // Magnus Online: ids inside records are local to their plugin file
+      auto& br = espmProvider->GetEspm().GetBrowser();
+      const uint32_t enchantmentId =
+        br.LookupById(opponentEquipmentEntry.baseId)
+          .ToGlobalId(armorData.enchantmentFormId);
       const auto enchantmentData =
-        espm::GetData<espm::ENCH>(armorData.enchantmentFormId, espmProvider);
-      ac += CalcMagicEffects(enchantmentData.effects);
+        espm::GetData<espm::ENCH>(enchantmentId, espmProvider);
+      espm::LookupResult enchantmentLookup = br.LookupById(enchantmentId);
+      Effects effects = enchantmentData.effects;
+      for (auto& effect : effects) {
+        effect.effectId = enchantmentLookup.ToGlobalId(effect.effectId);
+      }
+      ac += CalcMagicEffects(effects);
     }
 
     return ac;
@@ -199,6 +209,10 @@ float TES5SpellDamageFormulaImpl::GetBaseSpellDamage() const
 {
   const auto spellData =
     espm::GetData<espm::SPEL>(spellCastData.spell, espmProvider);
+  // Magnus Online: effect ids inside a record are local to its plugin file;
+  // convert them like SpellHasKeyword does, or modded spells fail to resolve
+  espm::LookupResult spellLookup =
+    espmProvider->GetEspm().GetBrowser().LookupById(spellCastData.spell);
 
   float damage = 0.f;
 
@@ -208,8 +222,8 @@ float TES5SpellDamageFormulaImpl::GetBaseSpellDamage() const
       continue;
     }
 
-    auto magicEffect =
-      espm::GetData<espm::MGEF>(effect.effectFormId, espmProvider);
+    auto magicEffect = espm::GetData<espm::MGEF>(
+      spellLookup.ToGlobalId(effect.effectFormId), espmProvider);
 
     const bool needAddDamage =
       magicEffect.data.IsFlagSet(espm::MGEF::Flags::Hostile) ||
