@@ -682,12 +682,18 @@ void ActionListener::OnHostAttempt(const RawMessageData& rawMsgData,
   if (hoster == 0 || !lastRemoteUpdate ||
       std::chrono::system_clock::now() - *lastRemoteUpdate >
         hostResetTimeout) {
-    partOne.GetLogger().info("Hoster changed from {0:x} to {0:x}", prevHoster,
+    partOne.GetLogger().info("Hoster changed from {0:x} to {1:x}", prevHoster,
                              me->GetFormId());
     hoster = me->GetFormId();
     remote.UpdateHoster(hoster);
 
     // Prevents too fast host switch
+    // Magnus Online: grow the list first (as the movement handler does);
+    // writing past its end crashed the server when hosting a new NPC
+    if (partOne.worldState.lastMovUpdateByIdx.size() <= remoteIdx) {
+      auto newSize = static_cast<size_t>(remoteIdx) + 1;
+      partOne.worldState.lastMovUpdateByIdx.resize(newSize);
+    }
     partOne.worldState.lastMovUpdateByIdx[remoteIdx] =
       std::chrono::system_clock::now();
 
