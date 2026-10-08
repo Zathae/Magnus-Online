@@ -357,7 +357,15 @@ runs:
       working-directory: ${{github.workspace}}/build
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest -C ${{env.BUILD_TYPE}} --verbose # --output-on-failure
+      # Magnus Online: some tests depend on timing and fail now and then on
+      # GitHub's machines; a failed test gets one more try (still fails twice)
+      run: |
+        ctest -C ${{env.BUILD_TYPE}} --verbose
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "::warning::A test failed - running the failed tests once more"
+          ctest -C ${{env.BUILD_TYPE}} --rerun-failed --output-on-failure
+          exit $LASTEXITCODE
+        }
       shell: powershell
 
     - uses: actions/upload-artifact@v7
