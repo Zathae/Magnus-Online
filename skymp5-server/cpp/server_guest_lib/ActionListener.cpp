@@ -679,7 +679,25 @@ void ActionListener::OnHostAttempt(const RawMessageData& rawMsgData,
 
   const auto hostResetTimeout = std::chrono::seconds(2);
 
-  if (hoster == 0 || !lastRemoteUpdate ||
+  // Magnus Online: a horse must be driven by its rider. Whoever is on (or
+  // right next to) an NPC takes it over from a hoster who is clearly farther
+  // away, even while that hoster is still sending updates.
+  bool closerTakesOver = false;
+  if (hoster != 0 && hoster != me->GetFormId() &&
+      me->GetCellOrWorld() == remote.GetCellOrWorld()) {
+    auto& hosterForm = partOne.worldState.LookupFormById(hoster);
+    MpActor* hosterActor = hosterForm ? hosterForm->AsActor() : nullptr;
+    if (hosterActor) {
+      const float mine = (me->GetPos() - remote.GetPos()).Length();
+      const float theirs =
+        hosterActor->GetCellOrWorld() == remote.GetCellOrWorld()
+        ? (hosterActor->GetPos() - remote.GetPos()).Length()
+        : 1e9f;
+      closerTakesOver = mine < 250.f && theirs > mine + 300.f;
+    }
+  }
+
+  if (hoster == 0 || closerTakesOver || !lastRemoteUpdate ||
       std::chrono::system_clock::now() - *lastRemoteUpdate >
         hostResetTimeout) {
     partOne.GetLogger().info("Hoster changed from {0:x} to {1:x}", prevHoster,
