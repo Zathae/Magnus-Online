@@ -52,8 +52,13 @@ void LocationalDataBinding::Set(Napi::Env, ScampServer& scampServer,
   if (auto actor = refr.AsActor()) {
     Apply(*actor, locationalData);
   } else {
-    throw std::runtime_error("mp.set can only change '" + GetPropertyName() +
-                             "' for actors, not for refrs");
+    // Magnus Online: objects the gamemode places (chests, notice boards,
+    // courier posts, decorations) can be put where they belong - without this
+    // they all stayed at the centre of the world map.
+    refr.SetCellOrWorld(locationalData.cellOrWorldDesc);
+    refr.SetPos(locationalData.pos);
+    refr.SetAngle(locationalData.rot);
+    refr.ForceSubscriptionsUpdate();
   }
 }
 
